@@ -332,6 +332,19 @@ enum
     QUESTGIVER_TYPE_MAX = 2,
 };
 
+struct TrainerGreeting
+{
+    std::string text;
+};
+
+struct TrainerGreetingLocale
+{
+    std::vector<std::string> localeText;
+};
+
+typedef std::map<uint32, TrainerGreeting> TrainerGreetingMap;
+typedef std::map<uint32, TrainerGreetingLocale> TrainerGreetingLocaleMap;
+
 enum ConditionType
 {
     //                                                      // value1       value2  for the Condition enumed
@@ -484,6 +497,9 @@ class IdGenerator
         T m_nextGuid;
 };
 
+typedef std::list<uint32> SimpleFactionsList;
+SimpleFactionsList const* GetFactionTeamList(uint32 faction);
+
 class ObjectMgr
 {
         friend class PlayerDumpReader;
@@ -591,6 +607,7 @@ class ObjectMgr
         GossipText const* GetGossipText(uint32 Text_ID) const;
 
         QuestgiverGreeting const* GetQuestgiverGreetingData(uint32 entry, uint32 type) const;
+        TrainerGreeting const* GetTrainerGreetingData(uint32 entry) const;
 
         WorldSafeLocsEntry const* GetClosestGraveYard(float x, float y, float z, uint32 MapId, Team team);
         bool AddGraveYardLink(uint32 id, uint32 zone, Team team, bool inDB = true);
@@ -700,6 +717,8 @@ class ObjectMgr
         void LoadGossipTextLocales();
         void LoadQuestgiverGreeting();
         void LoadQuestgiverGreetingLocales();
+        void LoadTrainerGreetings();
+        void LoadTrainerGreetingLocales();
         void LoadPageTextLocales();
         void LoadGossipMenuItemsLocales();
         void LoadPointOfInterestLocales();
@@ -749,6 +768,8 @@ class ObjectMgr
         void LoadVendors() { LoadVendors("npc_vendor", false); }
         void LoadTrainerTemplates();
         void LoadTrainers() { LoadTrainers("npc_trainer", false); }
+
+        void LoadFactions();
 
         /// @param _map Map* of the map for which to load active entities. If nullptr active entities on continents are loaded
         void LoadActiveEntities(Map* _map);
@@ -887,6 +908,15 @@ class ObjectMgr
         {
             auto itr = m_questgiverGreetingLocaleMap[type].find(entry);
             if (itr == m_questgiverGreetingLocaleMap[type].end()) return nullptr;
+            return &itr->second;
+        }
+
+        void GetTrainerGreetingLocales(uint32 entry, int32 loc_idx, std::string* titlePtr) const;
+
+        TrainerGreetingLocale const* GetTrainerGreetingLocale(uint32 entry) const
+        {
+            auto itr = m_trainerGreetingLocaleMap.find(entry);
+            if (itr == m_trainerGreetingLocaleMap.end()) return nullptr;
             return &itr->second;
         }
 
@@ -1261,6 +1291,8 @@ class ObjectMgr
 
         QuestgiverGreetingMap m_questgiverGreetingMap[QUESTGIVER_TYPE_MAX];
         QuestgiverGreetingLocaleMap m_questgiverGreetingLocaleMap[QUESTGIVER_TYPE_MAX];
+        TrainerGreetingMap m_trainerGreetingMap;
+        TrainerGreetingLocaleMap m_trainerGreetingLocaleMap;
 
         CreatureModelRaceMap m_mCreatureModelRaceMap;
 

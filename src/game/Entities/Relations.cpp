@@ -22,6 +22,7 @@
 #include "Entities/Corpse.h"
 #include "Entities/GameObject.h"
 #include "Entities/DynamicObject.h"
+#include "Globals/ObjectMgr.h"
 #include "Tools/Formulas.h"
 
 /////////////////////////////////////////////////
@@ -145,7 +146,7 @@ static ReputationRank GetFactionReaction(FactionTemplateEntry const* thisTemplat
 
                     if (!unit->HasFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_IGNORE_REPUTATION))
                     {
-                        const FactionEntry* thisFactionEntry = sFactionStore.LookupEntry(thisTemplate->faction);
+                        const FactionEntry* thisFactionEntry = sFactionStore.LookupEntry<FactionEntry>(thisTemplate->faction);
                         if (thisFactionEntry && thisFactionEntry->HasReputation())
                         {
                             const ReputationMgr& reputationMgr = unitPlayer->GetReputationMgr();
@@ -217,7 +218,7 @@ ReputationRank Unit::GetReactionTo(Unit const* unit) const
                 if (const ReputationRank* rank = thisPlayer->GetReputationMgr().GetForcedRankIfAny(unitFactionTemplate))
                     return (*rank);
 
-                const FactionEntry* unitFactionEntry = sFactionStore.LookupEntry(unitFactionTemplate->faction);
+                const FactionEntry* unitFactionEntry = sFactionStore.LookupEntry<FactionEntry>(unitFactionTemplate->faction);
 
                 // If the faction has reputation ranks available, "at war" and contested PVP flags decide outcome
                 if (!this->HasFlag(UNIT_FIELD_FLAGS_2, UNIT_FLAG2_IGNORE_REPUTATION) && unitFactionEntry && unitFactionEntry->HasReputation())
@@ -238,7 +239,7 @@ ReputationRank Unit::GetReactionTo(Unit const* unit) const
     {
         if (const FactionTemplateEntry* unitFactionTemplate = unit->getFactionTemplateEntry())
         {
-            const FactionEntry* unitFactionEntry = sFactionStore.LookupEntry(unitFactionTemplate->faction);
+            const FactionEntry* unitFactionEntry = sFactionStore.LookupEntry<FactionEntry>(unitFactionTemplate->faction);
             if (unitFactionEntry && unitFactionEntry->HasReputation())
                 reaction = ReputationRank(int32(reaction) + 1);
         }
@@ -351,7 +352,7 @@ bool Unit::CanAttack(const Unit* unit) const
     }
 
     // We can't attack unit when at least one of these flags is present on it:
-    const uint32 mask = (UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_ATTACKABLE_1 | UNIT_FLAG_UNK_16 | UNIT_FLAG_TAXI_FLIGHT | UNIT_FLAG_NOT_SELECTABLE);
+    const uint32 mask = (UNIT_FLAG_NON_ATTACKABLE | UNIT_FLAG_NOT_ATTACKABLE_1 | UNIT_FLAG_NON_ATTACKABLE_2 | UNIT_FLAG_TAXI_FLIGHT | UNIT_FLAG_NOT_SELECTABLE);
     if (unit->HasFlag(UNIT_FIELD_FLAGS, mask))
         return false;
 
@@ -755,9 +756,10 @@ bool Unit::IsCivilianForTarget(Unit const* pov) const
 /// @note Relations API Tier 1
 ///
 /// Based on client-side counterpart: <tt>static CGUnit_C::IsUnitInGroup(const CGUnit_C *this, const CGUnit_C *unit)</tt>
+/// Additionally contains optional detection of same group from UI standpoint datamined from other functions.
 /// Points of view are swapped to fit in with the rest of API, logic is preserved.
 /////////////////////////////////////////////////
-bool Unit::IsInGroup(Unit const* other, bool party /*= false*/) const
+bool Unit::IsInGroup(Unit const* other, bool party/* = false*/, bool UI/* = false*/) const
 {
     // Simple sanity check
     if (!other)
@@ -772,7 +774,48 @@ bool Unit::IsInGroup(Unit const* other, bool party /*= false*/) const
     // Only player controlled
     if (this->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED) && other->HasFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_PLAYER_CONTROLLED))
     {
-        // Check if controlling players are in the same group (same logic as client)
+        // UI mode: only players and their current pets/charms are in the party UI
+        if (UI)
+        {
+            const size_t comparisions = 3;
+            const Player* thisPlayer[comparisions] = { nullptr, nullptr, nullptr };
+            const Player* otherPlayer[comparisions] = { nullptr, nullptr, nullptr };
+
+            auto getUIPlayerComparisions = [] (const Unit* unit, const Player* (&array)[comparisions])
+            {
+                // In reverse order
+                if (unit->GetTypeId() == TYPEID_PLAYER)
+                    array[0] = static_cast<const Player*>(unit);
+                 ObjectGuid const& summonerGuid = unit->GetSummonerGuid();
+                 ObjectGuid const& charmerGuid = unit->GetCharmerGuid();
+                 if (summonerGuid.IsPlayer())
+                    array[1] = sObjectMgr.GetPlayer(summonerGuid);
+                 if (charmerGuid.IsPlayer())
+                    array[2] = sObjectMgr.GetPlayer(charmerGuid);
+            };
+
+            getUIPlayerComparisions(this, thisPlayer);
+            getUIPlayerComparisions(other, otherPlayer);
+
+            for (size_t i = 0; i < comparisions; ++i)
+            {
+                if (thisPlayer[i])
+                {
+                    for (size_t j = 0; j < comparisions; ++j)
+                    {
+                        if (otherPlayer[j])
+                        {
+                            const Group* group = thisPlayer[i]->GetGroup();
+                            if (thisPlayer[i] == otherPlayer[j] || (group && group == otherPlayer[j]->GetGroup() && (!party || group->SameSubGroup(thisPlayer[i], otherPlayer[j]))))
+                                return true;
+                        }
+                    }
+                }
+            }
+            return false;
+        }
+
+        // Check if controlling players are in the same group (same logic as client, but not local)
         if (const Player* thisPlayer = GetControllingPlayer())
         {
             if (const Player* otherPlayer = other->GetControllingPlayer())
@@ -1150,7 +1193,7 @@ bool Unit::IsFogOfWarVisibleHealth(Unit const* other) const
 
     switch (sWorld.getConfig(CONFIG_UINT32_FOGOFWAR_HEALTH))
     {
-        default: return IsInGroup(other);
+        default: return IsInGroup(other, false, true);
         case 1:  return CanCooperate(other);
         case 2:  return true;
     }
@@ -1172,7 +1215,7 @@ bool Unit::IsFogOfWarVisibleStats(Unit const* other) const
 
     switch (sWorld.getConfig(CONFIG_UINT32_FOGOFWAR_STATS))
     {
-        default: return (this == other || other->GetSummonerGuid() == GetObjectGuid());
+        default: return (this == other || GetSummonerGuid() == other->GetObjectGuid());
         case 1:  return CanCooperate(other);
         case 2:  return true;
     }

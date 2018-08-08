@@ -62,7 +62,7 @@ CREATE TABLE `spell_template` (
   `ManaCostPerlevel` int(11) unsigned NOT NULL DEFAULT '0',
   `ManaPerSecond` int(11) unsigned NOT NULL DEFAULT '0',
   `ManaPerSecondPerLevel` int(11) unsigned NOT NULL DEFAULT '0',
-  `RangeIndex` int(11) unsigned NOT NULL DEFAULT '0',
+  `RangeIndex` int(11) unsigned NOT NULL DEFAULT '1',
   `Speed` float NOT NULL DEFAULT '0',
   `StackAmount` int(11) unsigned NOT NULL DEFAULT '0',
   `Totem1` int(11) unsigned NOT NULL DEFAULT '0',

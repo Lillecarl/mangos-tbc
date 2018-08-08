@@ -3,7 +3,7 @@
 #####################################
 
 [MangosdConf]
-ConfVersion=2018060101
+ConfVersion=2018060601
 
 ###################################################################################################################
 # CONNECTIONS AND DIRECTORIES
@@ -622,6 +622,11 @@ LogColors = ""
 #        Default: 0 (false)
 #                 1 (true)
 #
+#    Instance.StrictCombatLockdown
+#        This setting determines whether its possible to leave combat mode through additional means (such as Feign Death) when zone is set in combat.
+#                 0 (false, drop combat, default pre-2.3.0)
+#        Default: 1 (true, combat persists, default post-2.3.0)
+#
 #    Instance.ResetTimeHour
 #        The hour of the day (0-23) when the global instance resets occur.
 #        Default: 4
@@ -653,7 +658,7 @@ LogColors = ""
 #                 1 (allowed)
 #
 #    Group.OfflineLeaderDelay
-#        A grace period for an offline group leader to reconnect before tranfering leadership to a next suitable member of the group (in secs) 
+#        A grace period for an offline group leader to reconnect before tranfering leadership to a next suitable member of the group (in secs)
 #        Default: 300 (5 minutes)
 #                   0 (Do not transfer group leadership)
 #
@@ -808,6 +813,7 @@ MaxSpellCastsInChain = 20
 RabbitDay = 0
 Instance.IgnoreLevel = 0
 Instance.IgnoreRaid = 0
+Instance.StrictCombatLockdown = 1
 Instance.ResetTimeHour = 4
 Instance.UnloadDelay = 1800000
 Quests.LowLevelHideDiff = 4

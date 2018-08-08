@@ -384,7 +384,7 @@ void WorldSession::HandleMoveNotActiveMoverOpcode(WorldPacket& recv_data)
     recv_data >> old_mover_guid;
     recv_data >> mi;
 
-    if (_player->GetMover() && _player->GetMover()->GetObjectGuid() == old_mover_guid)
+    if (_player->IsClientControlled() && _player->GetMover() && _player->GetMover()->GetObjectGuid() == old_mover_guid)
     {
         sLog.outError("HandleMoveNotActiveMover: incorrect mover guid: mover is %s and should be %s instead of %s",
                       _player->GetMover()->GetGuidStr().c_str(),
@@ -432,6 +432,9 @@ void WorldSession::HandleMoveKnockBackAck(WorldPacket& recv_data)
         return;
 
     HandleMoverRelocation(movementInfo);
+
+    if (plMover->IsFreeFlying())
+        plMover->SetCanFly(true);
 
     WorldPacket data(MSG_MOVE_KNOCK_BACK, recv_data.size() + 15);
     data << mover->GetObjectGuid();

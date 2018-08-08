@@ -369,7 +369,9 @@ inline bool IsSpellRemovedOnEvade(SpellEntry const* spellInfo)
 
     switch (spellInfo->Id)
     {
+        case 22856:         // Ice Lock (Guard Slip'kik ice trap in Dire Maul)
         case 32007:         // Mo'arg Engineer Transform Visual
+        case 35596:         // Power of the Legion
         case 39311:         // Scrapped Fel Reaver transform aura that is never removed even on evade
         case 39918:         // visual auras in Soulgrinder script
         case 39920:
@@ -503,12 +505,28 @@ inline bool IsCasterSourceTarget(uint32 target)
         case TARGET_TOTEM_AIR:
         case TARGET_TOTEM_FIRE:
         case TARGET_AREAEFFECT_GO_AROUND_DEST:
-        case TARGET_SELF2:
+        case TARGET_DEST_DESTINATION:
         case TARGET_NONCOMBAT_PET:
             return true;
         default:
             break;
     }
+    return false;
+}
+
+inline bool IsSpellWithScriptUnitTarget(SpellEntry const* spellInfo)
+{
+    for (int i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        if (!spellInfo->Effect[i])
+            continue;
+        switch (spellInfo->EffectImplicitTargetA[i])
+        {
+            case TARGET_SCRIPT:
+                return true;
+        }
+    }
+
     return false;
 }
 
@@ -659,7 +677,7 @@ inline bool IsOnlySelfTargeting(SpellEntry const* spellInfo)
         switch (spellInfo->EffectImplicitTargetA[i])
         {
             case TARGET_SELF:
-            case TARGET_SELF2:
+            case TARGET_DEST_DESTINATION:
                 break;
             default:
                 return false;
@@ -667,7 +685,7 @@ inline bool IsOnlySelfTargeting(SpellEntry const* spellInfo)
         switch (spellInfo->EffectImplicitTargetB[i])
         {
             case TARGET_SELF:
-            case TARGET_SELF2:
+            case TARGET_DEST_DESTINATION:
             case TARGET_NONE:
                 break;
             default:
@@ -730,10 +748,10 @@ inline bool IsNeutralTarget(uint32 target)
         case TARGET_RIGHT_FROM_VICTIM:
         case TARGET_LEFT_FROM_VICTIM:
         case TARGET_70:
-        case TARGET_RANDOM_NEARBY_LOC:
-        case TARGET_RANDOM_CIRCUMFERENCE_POINT:
-        case TARGET_RANDOM_DEST_LOC:
-        case TARGET_RANDOM_CIRCUMFERENCE_AROUND_TARGET:
+        case TARGET_RANDOM_DEST_CASTER:
+        case TARGET_RANDOM_DEST_CASTER_CIRCUMFERENCE:
+        case TARGET_RANDOM_DEST_TARGET:
+        case TARGET_RANDOM_DEST_TARGET_CIRCUMFERENCE:
         case TARGET_DYNAMIC_OBJECT_COORDINATES:
         case TARGET_POINT_AT_NORTH:
         case TARGET_POINT_AT_SOUTH:
@@ -776,7 +794,7 @@ inline bool IsFriendlyTarget(uint32 target)
         case TARGET_SINGLE_FRIEND_2:
         case TARGET_FRIENDLY_FRONTAL_CONE:
         case TARGET_AREAEFFECT_PARTY_AND_CLASS:
-        case TARGET_SELF2:
+        case TARGET_DEST_DESTINATION:
         case TARGET_NONCOMBAT_PET:
             return true;
         default:
@@ -836,8 +854,8 @@ inline bool IsNeutralEffectTargetPositive(uint32 etarget, const WorldObject* cas
         case TARGET_29:
         case TARGET_58:
         case TARGET_70:
-        case TARGET_RANDOM_DEST_LOC:
-        case TARGET_RANDOM_CIRCUMFERENCE_AROUND_TARGET:
+        case TARGET_RANDOM_DEST_TARGET:
+        case TARGET_RANDOM_DEST_TARGET_CIRCUMFERENCE:
             break;
         default:
             return true; // Some gameobjects or coords, who cares
@@ -915,15 +933,18 @@ inline bool IsPositiveEffect(const SpellEntry* spellproto, SpellEffectIndex effI
         case 42867:
         case 34786: // Temporal Analysis - factions and unitflags of target/caster verified, should not incur combat
         case 39384: // Fury Of Medivh visual - Burning Flames - Fury of medivh is friendly to all, and it hits all chess pieces, basically friendly fire damage
+        case 37277: // Summon Infernal - neutral spell with TARGET_DUELVSPLAYER which evaluates as hostile due to neutral factions, with delay and gets removed by !IsPositiveSpell check
+        case 42399: // Neutral spell with TARGET_DUELVSPLAYER, caster faction 14, target faction 14, evaluates as negative spell
+                    // because of POS/NEG decision, should in fact be NEUTRAL decision TODO: Increase check fidelity
             return true;
         case 34190: // Arcane Orb - should be negative
             /*34172 is cast onto friendly target, and fails bcs its delayed and we remove negative delayed on friendlies due to Duel code, if we change target pos code
             bcs 34190 will be evaled as neg, 34172 will be evaled as neg, and hence be removed cos its negative delayed on a friendly*/
+        case 35941: // Gravity Lapse - Neutral spell with TARGET_ONLY_PLAYER attribute, should hit all players in the room
+        case 39495: // Remove Tainted Cores
+        case 39497: // Remove Enchanted Weapons - both should hit all players in zone with the given items, uses a neutral target type
+        case 34700: // Allergic Reaction - Neutral target type - needs to be a debuff
             return false;
-        case 37277: // Summon Infernal - neutral spell with TARGET_DUELVSPLAYER which evaluates as hostile due to neutral factions, with delay and gets removed by !IsPositiveSpell check
-        case 42399: // Neutral spell with TARGET_DUELVSPLAYER, caster faction 14, target faction 14, evaluates as negative spell
-            // because of POS/NEG decision, should in fact be NEUTRAL decision TODO: Increase check fidelity
-            return true;
     }
 
     switch (spellproto->Effect[effIndex])
@@ -961,6 +982,24 @@ inline bool IsPositiveEffect(const SpellEntry* spellproto, SpellEffectIndex effI
                     break;
             }
             break;
+        case SPELL_EFFECT_SCHOOL_DAMAGE:
+        {
+            switch (spellproto->Id)
+            {
+                case 32247: // chess damage spells - Neutral
+                case 37459:
+                case 37461:
+                case 37462:
+                case 37463:
+                case 37474:
+                case 37476:
+                case 39384:
+                    return false;
+                default:
+                    break;
+            }
+            break;
+        }
         // Aura exceptions:
         case SPELL_EFFECT_APPLY_AURA:
         case SPELL_EFFECT_APPLY_AREA_AURA_FRIEND:
@@ -997,6 +1036,25 @@ inline bool IsPositiveEffect(const SpellEntry* spellproto, SpellEffectIndex effI
                             break;
                     }
                     break;
+                }
+                default:
+                    break;
+            }
+            break;
+        }
+        case SPELL_EFFECT_PERSISTENT_AREA_AURA:
+        {
+            switch (spellproto->EffectApplyAuraName[effIndex])
+            {
+                case SPELL_AURA_PERIODIC_DAMAGE: // possible TODO: make all return false
+                {
+                    switch (spellproto->Id)
+                    {
+                        case 37465: // chess rain of fire and poison cloud spells
+                        case 37469:
+                        case 37775:
+                            return false;
+                    }
                 }
                 default:
                     break;
@@ -1190,9 +1248,9 @@ inline uint32 GetAffectedTargets(SpellEntry const* spellInfo)
                 case 24150:                                 // Stinger Charge Primer (AQ20, Hive'Zara Stinger)
                 case 24781:                                 // Dream Fog (Emerald Dragons)
                 case 26080:                                 // Stinger Charge Primer (AQ40, Vekniss Stinger)
+                case 26524:                                 // Sand Trap (AQ20 - Kurinnaxx)
                 case 28560:                                 // Summon Blizzard (Naxx, Sapphiron)
                 case 30541:                                 // Blaze (Magtheridon)
-                case 30572:                                 // Quake (Magtheridon)
                 case 30769:                                 // Pick Red Riding Hood (Karazhan, Big Bad Wolf)
                 case 30835:                                 // Infernal Relay (Karazhan, Prince Malchezaar)
                 case 31347:                                 // Doom (Hyjal Summit, Azgalor)
@@ -1297,6 +1355,8 @@ inline bool IsIgnoreLosSpell(SpellEntry const* spellInfo)
         case 31628:                                 // Green Beam
         case 31630:                                 // Green Beam
         case 31631:                                 // Green Beam
+        case 24742:                                 // Magic Wings
+        case 42867:                                 // both need LOS, likely TARGET_DUELVSPLAYER should use LOS ignore from normal radius, not per-effect radius WIP
             return true;
         default:
             break;
@@ -1307,12 +1367,31 @@ inline bool IsIgnoreLosSpell(SpellEntry const* spellInfo)
 
 inline bool IsIgnoreLosSpellEffect(SpellEntry const* spellInfo, SpellEffectIndex effIdx)
 {
+    // TODO: Move this to target logic
+    switch (spellInfo->EffectImplicitTargetA[effIdx])
+    {
+        case TARGET_AREAEFFECT_PARTY_AND_CLASS: return true;
+        default: break;
+    }
+
     return spellInfo->EffectRadiusIndex[effIdx] == 13 || IsIgnoreLosSpell(spellInfo);
 }
 
 inline bool IsIgnoreLosSpellCast(SpellEntry const* spellInfo)
 {
     return spellInfo->rangeIndex == 13 || IsIgnoreLosSpell(spellInfo);
+}
+
+// applied when item is received/looted/equipped
+inline bool IsItemAura(SpellEntry const* spellInfo)
+{
+    switch (spellInfo->Id)
+    {
+        case 38132:
+            return true;
+        default:
+            return false;
+    }
 }
 
 inline bool NeedsComboPoints(SpellEntry const* spellInfo)
@@ -1380,6 +1459,37 @@ inline bool IsAuraAddedBySpell(uint32 auraType, uint32 spellId)
     for (int i = 0; i < 3; i++)
         if (spellproto->EffectApplyAuraName[i] == auraType)
             return true;
+    return false;
+}
+
+inline bool IsPartyOrRaidTarget(uint32 target)
+{
+    switch (target)
+    {
+        case TARGET_RANDOM_FRIEND_CHAIN_IN_AREA:
+        case TARGET_ALL_PARTY_AROUND_CASTER:
+        case TARGET_ALL_PARTY:
+        case TARGET_ALL_PARTY_AROUND_CASTER_2:
+        case TARGET_SINGLE_PARTY:
+        case TARGET_AREAEFFECT_PARTY:
+        case TARGET_ALL_RAID_AROUND_CASTER:
+        case TARGET_SINGLE_FRIEND_2:
+        case TARGET_58:
+        case TARGET_AREAEFFECT_PARTY_AND_CLASS:
+            return true;
+        default:
+            return false;
+    }
+}
+
+inline bool IsGroupBuff(SpellEntry const* spellInfo)
+{
+    for (uint8 i = 0; i < MAX_EFFECT_INDEX; ++i)
+    {
+        if (IsPartyOrRaidTarget(spellInfo->EffectImplicitTargetA[i]))
+            return true;
+    }
+
     return false;
 }
 
@@ -1878,7 +1988,8 @@ enum ProcFlagsEx
     PROC_EX_RESERVED3           = 0x0008000,
     PROC_EX_EX_TRIGGER_ALWAYS   = 0x0010000,                // If set trigger always ( no matter another flags) used for drop charges
     PROC_EX_EX_ONE_TIME_TRIGGER = 0x0020000,                // If set trigger always but only one time (not used)
-    PROC_EX_PERIODIC_POSITIVE   = 0x0040000,                 // For periodic heal
+    PROC_EX_PERIODIC_POSITIVE   = 0x0040000,                // For periodic heal
+    PROC_EX_MAGNET              = 0x0080000,                // For grounding totem hit
 
     // Flags for internal use - do not use these in db!
     PROC_EX_INTERNAL_HOT        = 0x2000000
@@ -2297,6 +2408,25 @@ class SpellMgr
         {
             if (SpellChainNode const* node = GetSpellChainNode(spell_id))
                 return node->prev;
+
+            return 0;
+        }
+
+        uint32 GetNextSpellInChain(uint32 spell_id) const
+        {
+            SpellChainMapNext const& nextMap = GetSpellChainNext();
+
+            for (SpellChainMapNext::const_iterator itr = nextMap.lower_bound(spell_id); itr != nextMap.upper_bound(spell_id); ++itr)
+            {
+                SpellChainNode const* node = GetSpellChainNode(itr->second);
+
+                // If next spell is a requirement for this one then skip it
+                if (node->req == spell_id)
+                    continue;
+
+                if (node->prev == spell_id)
+                    return itr->second;
+            }
 
             return 0;
         }

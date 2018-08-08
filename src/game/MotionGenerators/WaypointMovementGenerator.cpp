@@ -124,17 +124,9 @@ void WaypointMovementGenerator<Creature>::OnArrived(Creature& creature)
     if (creature.AI())
     {
         uint32 type = WAYPOINT_MOTION_TYPE;
-        if (m_PathOrigin == PATH_FROM_EXTERNAL && m_pathId > 0)
-            type = EXTERNAL_WAYPOINT_MOVE + m_pathId;
-        creature.AI()->MovementInform(type, i_currentNode);
-
-        if (creature.IsTemporarySummon())
-        {
-            if (creature.GetSpawnerGuid().IsCreatureOrPet())
-                if (Creature* pSummoner = creature.GetMap()->GetAnyTypeCreature(creature.GetSpawnerGuid()))
-                    if (pSummoner->AI())
-                        pSummoner->AI()->SummonedMovementInform(&creature, type, i_currentNode);
-        }
+        if (m_PathOrigin == PATH_FROM_EXTERNAL)
+            type = EXTERNAL_WAYPOINT_MOVE;
+        InformAI(creature, type, i_currentNode);
     }
 
     // Wait delay ms
@@ -166,12 +158,15 @@ void WaypointMovementGenerator<Creature>::StartMove(Creature& creature)
         }
 
         // Inform AI
-        if (creature.AI() && m_PathOrigin == PATH_FROM_EXTERNAL &&  m_pathId > 0)
+        if (creature.AI() && m_PathOrigin == PATH_FROM_EXTERNAL)
         {
+            uint32 type;
             if (!reachedLast)
-                creature.AI()->MovementInform(EXTERNAL_WAYPOINT_MOVE_START + m_pathId, currPoint->first);
+                type = EXTERNAL_WAYPOINT_MOVE_START;
             else
-                creature.AI()->MovementInform(EXTERNAL_WAYPOINT_FINISHED_LAST + m_pathId, currPoint->first);
+                type = EXTERNAL_WAYPOINT_FINISHED_LAST;
+
+            InformAI(creature, type, currPoint->first);
 
             if (creature.isDead() || !creature.IsInWorld()) // Might have happened with above calls
                 return;
@@ -192,6 +187,18 @@ void WaypointMovementGenerator<Creature>::StartMove(Creature& creature)
         init.SetFacing(nextNode.orientation);
     creature.SetWalk(!creature.hasUnitState(UNIT_STAT_RUNNING_STATE) && !creature.IsLevitating(), false);
     init.Launch();
+}
+
+void WaypointMovementGenerator<Creature>::InformAI(Creature& creature, uint32 type, uint32 data)
+{
+    creature.AI()->MovementInform(type, data);
+    if (creature.IsTemporarySummon())
+    {
+        if (creature.GetSpawnerGuid().IsCreatureOrPet())
+            if (Creature* pSummoner = creature.GetMap()->GetAnyTypeCreature(creature.GetSpawnerGuid()))
+                if (pSummoner->AI())
+                    pSummoner->AI()->SummonedMovementInform(&creature, type, data);
+    }
 }
 
 bool WaypointMovementGenerator<Creature>::Update(Creature& creature, const uint32& diff)
@@ -327,7 +334,7 @@ void FlightPathMovementGenerator::Initialize(Player& player)
 {
     player.InterruptMoving();
     player.addUnitState(UNIT_STAT_TAXI_FLIGHT);
-    player.SetFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CLIENT_CONTROL_LOST | UNIT_FLAG_TAXI_FLIGHT);
+    player.SetFlag(UNIT_FIELD_FLAGS, (UNIT_FLAG_CLIENT_CONTROL_LOST | UNIT_FLAG_TAXI_FLIGHT));
     player.UpdateClientControl(&player, false);
 }
 
@@ -335,7 +342,7 @@ void FlightPathMovementGenerator::Finalize(Player& player)
 {
     player.InterruptMoving();
     player.clearUnitState(UNIT_STAT_TAXI_FLIGHT);
-    player.RemoveFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_CLIENT_CONTROL_LOST | UNIT_FLAG_TAXI_FLIGHT);
+    player.RemoveFlag(UNIT_FIELD_FLAGS, (UNIT_FLAG_CLIENT_CONTROL_LOST | UNIT_FLAG_TAXI_FLIGHT));
     player.RemoveFlag(PLAYER_FLAGS, PLAYER_FLAGS_TAXI_BENCHMARK);
     player.UpdateClientControl(&player, true);
 }
@@ -368,6 +375,8 @@ bool FlightPathMovementGenerator::Update(Player& player, const uint32& /*diff*/)
     // We are waiting for spline to complete at this point
     if (movement)
         return true;
+    else if (player.IsMounted())
+        player.OnTaxiFlightSplineEnd();
 
     // Load and execute the spline
     if (player.OnTaxiFlightSplineUpdate())

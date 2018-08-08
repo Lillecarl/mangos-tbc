@@ -540,6 +540,7 @@ void World::LoadConfigSettings(bool reload)
 
     setConfig(CONFIG_BOOL_INSTANCE_IGNORE_LEVEL, "Instance.IgnoreLevel", false);
     setConfig(CONFIG_BOOL_INSTANCE_IGNORE_RAID,  "Instance.IgnoreRaid", false);
+    setConfig(CONFIG_BOOL_INSTANCE_STRICT_COMBAT_LOCKDOWN,  "Instance.StrictCombatLockdown", true);
 
     setConfig(CONFIG_BOOL_CAST_UNSTUCK, "CastUnstuck", true);
     setConfig(CONFIG_UINT32_MAX_SPELL_CASTS_IN_CHAIN, "MaxSpellCastsInChain", 20);
@@ -896,6 +897,10 @@ void World::SetInitialWorldSettings()
     sLog.outString("Loading spell_template...");
     sObjectMgr.LoadSpellTemplate();
 
+    // Load before DBCs
+    sLog.outString("Loading faction_store...");
+    sObjectMgr.LoadFactions();
+
     ///- Load the DBC files
     sLog.outString("Initialize DBC data stores...");
     LoadDBCStores(m_dataPath);
@@ -1199,6 +1204,9 @@ void World::SetInitialWorldSettings()
     sLog.outString("Loading Questgiver Greetings...");
     sObjectMgr.LoadQuestgiverGreeting();
 
+    sLog.outString("Loading Trainer Greetings...");
+    sObjectMgr.LoadTrainerGreetings();
+
     ///- Loading localization data
     sLog.outString("Loading Localization strings...");
     sObjectMgr.LoadCreatureLocales();                       // must be after CreatureInfo loading
@@ -1210,6 +1218,7 @@ void World::SetInitialWorldSettings()
     sObjectMgr.LoadGossipMenuItemsLocales();                // must be after gossip menu items loading
     sObjectMgr.LoadPointOfInterestLocales();                // must be after POI loading
     sObjectMgr.LoadQuestgiverGreetingLocales();
+    sObjectMgr.LoadTrainerGreetingLocales();                // must be after CreatureInfo loading
     sLog.outString(">>> Localization strings loaded");
     sLog.outString();
 
