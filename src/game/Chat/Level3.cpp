@@ -6379,7 +6379,7 @@ bool ChatHandler::HandleArenaTeamPointSet(char* args)
     }
     team->SetRatingForAll(newRating);
     team->SaveToDB();
-    return false;
+    return true;
 }
 
 bool ChatHandler::HandleModifyGenderCommand(char* args)
