@@ -1780,8 +1780,7 @@ Loot::Loot(Player* player, GameObject* gameObject, LootType type, bool lootSnaps
             }
         }
 
-        if (!lootSnapshot)
-            gameObject->SetLootState(GO_ACTIVATED);
+        gameObject->SetLootState(GO_ACTIVATED);
     }
     return;
 }
