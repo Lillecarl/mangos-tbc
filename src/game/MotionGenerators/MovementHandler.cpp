@@ -289,13 +289,6 @@ void WorldSession::HandleMovementOpcodes(WorldPacket& recv_data)
     Unit* mover = _player->GetMover();
     Player* plMover = mover->GetTypeId() == TYPEID_PLAYER ? (Player*)mover : nullptr;
 
-    // ignore, waiting processing in WorldSession::HandleMoveWorldportAckOpcode and WorldSession::HandleMoveTeleportAck
-    if (plMover && plMover->IsBeingTeleported())
-    {
-        recv_data.rpos(recv_data.wpos());                   // prevent warnings spam
-        return;
-    }
-
     /* extract packet */
     MovementInfoPtr movementInfo = MovementInfoPtr(new MovementInfo());
     recv_data >> movementInfo;
@@ -719,6 +712,9 @@ void WorldSession::HandleMoveTimeSkippedOpcode(WorldPacket& recv_data)
 
 bool WorldSession::ProcessMovementInfo(MovementInfo& movementInfo, Unit* mover, Player* plMover, WorldPacket& recv_data)
 {
+    if (plMover && plMover->IsBeingTeleported())
+        return false;
+
     if (!VerifyMovementInfo(movementInfo))
         return false;
 
