@@ -57,6 +57,7 @@
 #include "Loot/LootMgr.h"
 #include "World/WorldState.h"
 #include "Arena/ArenaTeam.h"
+#include "Metric/Metric.h"
 
 #include "Custom/CPlayer.h"
 
@@ -324,6 +325,7 @@ bool ChatHandler::HandleReloadConfigCommand(char* /*args*/)
     sLog.outString("Re-Loading config settings...");
     sWorld.LoadConfigSettings(true);
     sMapMgr.InitializeVisibilityDistanceInfo();
+    metric::metric::instance().reload_config();
     SendGlobalSysMessage("World config settings reloaded.");
     return true;
 }
