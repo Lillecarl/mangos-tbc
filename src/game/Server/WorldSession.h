@@ -862,9 +862,8 @@ class WorldSession
 
         // private trade methods
         void moveItems(Item* myItems[], Item* hisItems[]);
-        bool VerifyMovementInfo(const MovementInfoPtr& movementInfo, ObjectGuid const& guid) const;
-        bool VerifyMovementInfo(const MovementInfoPtr& movementInfo) const;
-        void HandleMoverRelocation(const MovementInfoPtr& movementInfo);
+        bool VerifyMovementInfo(MovementInfo const& movementInfo, Unit* mover) const;
+        void HandleMoverRelocation(MovementInfo& movementInfo);
 
         void ExecuteOpcode(OpcodeHandler const& opHandle, WorldPacket& packet);
 
