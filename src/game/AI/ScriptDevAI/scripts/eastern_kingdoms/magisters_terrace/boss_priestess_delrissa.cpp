@@ -305,6 +305,7 @@ struct boss_priestess_delrissaAI : public priestess_commonAI
                     ResetCombatAction(action, 30000u);
                 break;
         }
+        priestess_commonAI::ExecuteAction(action);
     }
 };
 
@@ -353,6 +354,7 @@ struct priestess_companion_commonAI : public priestess_commonAI
                     SetActionReadyStatus(action, false);
                 break;
         }
+        priestess_commonAI::ExecuteAction(action);
     }
 };
 
