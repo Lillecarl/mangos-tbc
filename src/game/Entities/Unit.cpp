@@ -10323,8 +10323,6 @@ bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID, bool lo
         if (initial)
             CastStop(GetObjectGuid() == casterGuid ? spellID : 0);
 
-        SetImmobilizedState(apply, true, logout);
-
         if (initial)
         {
             // Non-client controlled unit with an AI should drop target
@@ -10338,6 +10336,8 @@ bool Unit::SetStunned(bool apply, ObjectGuid casterGuid, uint32 spellID, bool lo
                 SetFacingTo(GetOrientation());
             }
         }
+
+        SetImmobilizedState(apply, true, logout);
 
         ApplyModFlag(UNIT_FIELD_FLAGS, UNIT_FLAG_STUNNED, hasUnitState(UNIT_STAT_STUNNED | UNIT_STAT_LOGOUT_TIMER));
 
