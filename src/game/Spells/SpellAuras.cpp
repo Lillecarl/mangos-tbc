@@ -7850,6 +7850,8 @@ void Aura::HandleAuraPhase(bool apply, bool real)
     if (!real)
         return;
     GetTarget()->SetPhaseMask(apply ? GetMiscValue() : 1u);
+    if (Pet* pet = GetTarget()->GetPet())
+        pet->SetPhaseMask(apply ? GetMiscValue() : 1u);
 }
 
 bool Aura::IsLastAuraOnHolder()
