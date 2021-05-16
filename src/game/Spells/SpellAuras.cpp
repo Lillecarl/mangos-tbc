@@ -1084,6 +1084,7 @@ void Aura::HandleAddModifier(bool apply, bool Real)
     if (apply)
     {
         SpellEntry const* spellProto = GetSpellProto();
+        uint32 priority = spellProto->spellPriority;
 
         // Add custom charges for some mod aura
         switch (spellProto->Id)
@@ -1093,6 +1094,9 @@ void Aura::HandleAddModifier(bool apply, bool Real)
             case 34936:                                     // Backlash
                 GetHolder()->SetAuraCharges(1);
                 break;
+            case 16246:                                     // Clearcasting - Shaman - need to be applied before elemental mastery
+                priority = 100;
+                break;
         }
 
         m_spellmod = new SpellModifier(
@@ -1100,16 +1104,13 @@ void Aura::HandleAddModifier(bool apply, bool Real)
             SpellModType(m_modifier.m_auraname),            // SpellModType value == spell aura types
             m_modifier.m_amount,
             this,
+            priority,
             // prevent expire spell mods with (charges > 0 && m_stackAmount > 1)
             // all this spell expected expire not at use but at spell proc event check
             spellProto->StackAmount > 1 ? 0 : GetHolder()->GetAuraCharges());
     }
 
     ((Player*)GetTarget())->AddSpellMod(m_spellmod, apply);
-
-    // Heap was freed in player->AddSpellMod(), let class member acknowledge
-    if (m_spellmod && !apply)
-        m_spellmod = nullptr;
 
     ReapplyAffectedPassiveAuras();
 }
