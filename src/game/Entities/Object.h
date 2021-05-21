@@ -1181,6 +1181,10 @@ class WorldObject : public Object
 
         bool IsUsingNewSpawningSystem() const;
 
+        void AddClientIAmAt(Player const* player);
+        void RemoveClientIAmAt(Player const* player);
+        GuidSet& GetClientGuidsIAmAt() { return m_clientGUIDsIAmAt; }
+
         // Event handler
         EventProcessor m_events;
 
@@ -1231,6 +1235,8 @@ class WorldObject : public Object
         ViewPoint m_viewPoint;
         bool m_isActiveObject;
         uint64 m_debugFlags;
+
+        GuidSet m_clientGUIDsIAmAt;
 
         // Spell System compliance
         uint32 m_castCounter;                               // count casts chain of triggered spells for prevent infinity cast crashes
