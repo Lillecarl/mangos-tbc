@@ -599,7 +599,7 @@ void WorldSession::HandlePlayerLogin(LoginQueryHolder* holder)
         return;
     }
 
-    m_currentPlayerLevel = pCurrChar->getLevel();
+    m_currentPlayerLevel = pCurrChar->GetLevel();
 
     pCurrChar->GetMotionMaster()->Initialize();
 
