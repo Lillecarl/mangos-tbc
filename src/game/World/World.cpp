@@ -66,6 +66,7 @@
 #include "World/WorldState.h"
 #include "Cinematics/CinematicMgr.h"
 #include "Maps/TransportMgr.h"
+#include "Anticheat/Anticheat.hpp"
 
 #include "Custom/Custom.h"
 
@@ -1390,6 +1391,9 @@ void World::SetInitialWorldSettings()
     // Delete all characters which have been deleted X days before
     Player::DeleteOldCharacters();
 
+    sLog.outString("Loading anticheat library");
+    sAnticheatLib->Initialize();
+
 #ifdef BUILD_AHBOT
     sLog.outString("Initialize AuctionHouseBot...");
     sAuctionHouseBot.Initialize();
@@ -2601,6 +2605,22 @@ void World::InvalidatePlayerDataToAllClient(ObjectGuid guid) const
     WorldPacket data(SMSG_INVALIDATE_PLAYER, 8);
     data << guid;
     SendGlobalMessage(data);
+}
+
+void World::SendGMTextFlags(uint32 accountFlag, int32 stringId, std::string type, const char* message)
+{
+    std::string mangosString = sObjectMgr.GetMangosString(stringId, DEFAULT_LOCALE);
+    std::string output = mangosString + " Type: " + type + " Content: " + message;
+    WorldPacket inform;
+    ChatHandler::BuildChatPacket(inform, CHAT_MSG_WHISPER_INFORM, output.data(), LANG_UNIVERSAL, CHAT_TAG_NONE);
+    GetMessager().AddMessage([inform, accountFlag](World* world)
+    {
+        world->ExecuteForAllSessions([inform, accountFlag](auto& data)
+        {
+            if (data.HasAccountFlag(accountFlag))
+                data.SendPacket(inform);
+        });
+    });
 }
 
 void World::IncrementOpcodeCounter(uint32 opcodeId)

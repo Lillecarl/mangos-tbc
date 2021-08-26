@@ -39,6 +39,7 @@
 #include "Util.h"
 #include "Tools/Language.h"
 #include "AI/ScriptDevAI/ScriptDevAIMgr.h"
+#include "Anticheat/Anticheat.hpp"
 #include "Spells/SpellMgr.h"
 #include "Custom/CPlayer.h"
 
@@ -117,8 +118,13 @@ class CharacterHandler
     public:
         void HandleCharEnumCallback(QueryResult* result, uint32 account)
         {
-            if (WorldSession* session = sWorld.FindSession(account))
-                session->HandleCharEnum(result);
+            WorldSession* session = sWorld.FindSession(account);
+            if (!session)
+            {
+                delete result;
+                return;
+            }
+            session->HandleCharEnum(result);
         }
 
         void HandlePlayerLoginCallback(QueryResult* /*dummy*/, SqlQueryHolder* holder)
@@ -180,7 +186,7 @@ void WorldSession::HandleCharEnum(QueryResult* result)
 
     data.put<uint8>(0, num);
 
-    SendPacket(data, true);
+    m_anticheat->SendCharEnum(std::move(data));
 }
 
 void WorldSession::HandleCharEnumOpcode(WorldPacket& /*recv_data*/)
@@ -860,6 +866,7 @@ void WorldSession::HandlePlayerReconnect()
     m_initialZoneUpdated = false;
 
     SetOnline();
+    m_anticheat->NewPlayer();
 
     Group* group = _player->GetGroup();
 
