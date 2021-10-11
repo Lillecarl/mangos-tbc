@@ -8217,7 +8217,7 @@ bool Unit::Mount(uint32 displayid, const Aura* aura/* = nullptr*/)
 
 bool Unit::Unmount(const Aura* aura/* = nullptr*/)
 {
-    if (!IsMounted())
+    if (!GetMountID())
         return false;
 
     if (aura)
@@ -10733,7 +10733,7 @@ void Unit::UpdateModelData()
         SetFloatValue(UNIT_FIELD_COMBATREACH, GetObjectScale() * modelInfo->combat_reach);
 
         SetBaseWalkSpeed(modelInfo->SpeedWalk);
-        SetBaseRunSpeed(modelInfo->SpeedRun);
+        SetBaseRunSpeed(modelInfo->SpeedRun, false);
     }
 }
 
